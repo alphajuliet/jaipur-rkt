@@ -5,9 +5,8 @@
 ; Imports
 (require racket/hash
          lens/common
-         ;lens/data/list
          lens/data/hash
-         threading)
+         text-table)
 
 ; Exports
 (provide (all-defined-out))
@@ -61,5 +60,25 @@
 ; Composite lenses
 (define (_market-rsrc r) (>>> _market (_rsrc r)))
 (define (_hand-rsrc p r) (>>> _hand (_player p) (_rsrc r)))
+
+;-------------------------------
+; Pretty print the state
+
+(define (show-cards _lens st)
+  (define h (view _lens st))
+  (table->string
+   #:row-sep? #f
+   (list (hash-keys h) (hash-values h))))
+
+(define (ppst st)
+  (displayln "Deck")
+  (displayln (show-cards _deck st))
+  (displayln "Market")
+  (displayln (show-cards _market st))
+  (displayln "Player A")
+  (displayln (show-cards (>>> _hand (_player 'A)) st))
+  (displayln "Player B")
+  (displayln (show-cards (>>> _hand (_player 'B)) st))
+  )
 
 ; The End

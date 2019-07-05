@@ -5,7 +5,6 @@
 ; Imports
 (require racket/hash
          lens/common
-         ;lens/data/list
          lens/data/hash
          threading
          hash-ext
@@ -63,6 +62,7 @@
        (deal-cards (>>> _hand (_player 'A)) 5)
        (deal-cards (>>> _hand (_player 'B)) 5)))
 
+(ppst (init-game))
 
 ;-------------------------------
 ; Unit tests
