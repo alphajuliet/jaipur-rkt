@@ -6,6 +6,7 @@
 (require racket/hash
          lens/common
          lens/data/hash
+         threading
          text-table)
 
 ; Exports
@@ -64,21 +65,18 @@
 ;-------------------------------
 ; Pretty print the state
 
-(define (show-cards _lens st)
-  (define h (view _lens st))
-  (table->string
-   #:row-sep? #f
-   (list (hash-keys h) (hash-values h))))
+(define (list-cards title _lens st)
+  (append (list title)
+          (~>> st (view _lens) (hash-values))))
 
 (define (ppst st)
-  (displayln "Deck")
-  (displayln (show-cards _deck st))
-  (displayln "Market")
-  (displayln (show-cards _market st))
-  (displayln "Player A")
-  (displayln (show-cards (>>> _hand (_player 'A)) st))
-  (displayln "Player B")
-  (displayln (show-cards (>>> _hand (_player 'B)) st))
-  )
+  (displayln
+   (table->string
+    (list (append '("") (~>> st (view _deck) (hash-keys)))
+          (list-cards "Deck" _deck st)
+          (list-cards "Market" _market st)
+          (list-cards "Player A" (>>> _hand (_player 'A)) st)
+          (list-cards "Player B" (>>> _hand (_player 'B)) st)))))
+  
 
 ; The End
