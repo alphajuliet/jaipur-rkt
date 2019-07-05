@@ -6,6 +6,7 @@
 (require racket/hash
          lens/common
          lens/data/hash
+         lens/data/list
          threading
          text-table)
 
@@ -71,7 +72,7 @@
 
 (define (ppst st)
   (displayln
-   (table->string
+   (table->string #:align 'center
     (list (append '("") (~>> st (view _deck) (hash-keys)))
           (list-cards "Deck" _deck st)
           (list-cards "Market" _market st)

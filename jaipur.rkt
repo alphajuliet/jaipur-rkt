@@ -33,7 +33,7 @@
 ; If not possible then throw an error
 (define (move-cards rsrc _src _dest n st)
   (if (> n (view (>>> _src (_rsrc rsrc)) st))
-      (raise-user-error 'move-card "failed because ~a cards are not available to move." n)
+      (raise-user-error 'move-card "failed because insufficient cards are available to move." n)
       ;else
       (~>> st
            (over (>>> _src (_rsrc rsrc)) (curry flip - n))
@@ -62,7 +62,21 @@
        (deal-cards (>>> _hand (_player 'A)) 5)
        (deal-cards (>>> _hand (_player 'B)) 5)))
 
-(ppst (init-game))
+
+; Take a card from the market (or all the camels)
+; Deal replacement cards to the deck
+; take-card :: Player -> Card -> State -> State
+(define (take-card plyr rsrc st)
+  (define n (if (eq? rsrc 'Camel)
+                (view (>>> _market (_rsrc rsrc)) st)
+                1))
+  (define _dest (>>> _hand (_player plyr)))
+  (~>> st
+       (move-cards rsrc _market _dest n)
+       (deal-cards _market n)))
+
+;-------------------------------
+(define s0 (init-game))
 
 ;-------------------------------
 ; Unit tests
