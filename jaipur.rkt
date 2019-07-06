@@ -21,6 +21,8 @@
 
 (define (flip f a b) (f b a))
 
+(define (list-sum lst) (foldl + 0 lst))
+
 ;-------------------------------
 ; Random card from the deck
 ; random-card :: State -> Card
@@ -63,6 +65,14 @@
   (define camels (view (_hand-rsrc plyr 'Camel) st))
   (- total camels))
 
+; Take n resource tokens and add to player's score
+; take-tokens :: Resource -> Player -> Int -> State -> State
+(define (take-tokens rsrc plyr n st)
+  (define-values (x y) (split-at (view (>>> _tokens (_rsrc rsrc)) st) n))
+  (~>> st
+       (over (>>> _points (_player plyr)) (curry + (list-sum x)))
+       (at (>>> _tokens (_rsrc rsrc)) y)))
+
 ;===============================
 ; Game actions
 ; - Init game
@@ -88,10 +98,11 @@
 ; take-card :: Player -> Resource -> State -> State
 (define (take-card plyr rsrc st)
 
-  ; If it's camels, take as many as there are
+  ; If camels, then take as many as there are available
   (define n (if (eq? rsrc 'Camel)
                 (view (_market-rsrc rsrc) st)
-                ;else check if we will blow the hand limit
+                
+                ; else check that we won't blow the hand limit
                 (if (>= 7 (count-cards-excl-camels plyr st))
                     (raise-user-error 'take-card "Player cannot have more than 7 cards, excluding camels.")
                     ;else
@@ -101,10 +112,19 @@
        (deal-cards _market n)))
 
 ;-------------------------------
-; Sell cards @@TODO
+; Sell cards
 ; sell-cards :: Player -> Resource -> State -> State
-(define (sell-cards plyr rsrc st)
-  st)
+(define (sell-cards rsrc plyr st)
+  (define n (view (_hand-rsrc plyr rsrc) st))
+  (if (eq? rsrc 'Camel)
+      (raise-user-error 'sell-cards "Cannot sell camels.")
+      ;else
+      (if (>= n (hash-ref min-sell rsrc))
+          (~>> st
+               (over (_hand-rsrc plyr rsrc) (curry flip - n))
+               (take-tokens rsrc plyr n))
+          ;else
+          (raise-user-error 'sell-cards "Not enough cards to sell."))))
 
 ;-------------------------------
 ; Exchange cards with the market. This includes using camels. @@TODO
