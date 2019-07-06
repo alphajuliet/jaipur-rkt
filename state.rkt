@@ -1,21 +1,20 @@
 #lang racket
 ; Set up the state and lenses
-; AndrewJ 2019-07-05
+; AndrewJ 2019-07-06
 
 ; Imports
 (require racket/hash
          lens/common
          lens/data/hash
-         lens/data/list
          threading
          text-table)
 
 ; Exports
 (provide (all-defined-out))
 
-; Composable versions of lens functions
+; Composable versions of lens functions. Similar to PureScript lens library functions.
 (define (view _lens x) (lens-view _lens x))
-(define (at _lens x) (lens-set _lens x))
+(define (at _lens x y) (lens-set _lens y x))
 (define (over _lens f x) (lens-transform _lens x f))
 (define >>> lens-thrush)
 (define <<< lens-compose)
@@ -61,6 +60,7 @@
 
 ; Composite lenses
 (define (_market-rsrc r) (>>> _market (_rsrc r)))
+(define (_hand-plyr p) (>>> _hand (_player p)))
 (define (_hand-rsrc p r) (>>> _hand (_player p) (_rsrc r)))
 
 ;-------------------------------
@@ -73,7 +73,7 @@
 (define (ppst st)
   (displayln
    (table->string #:align 'center
-    (list (append '("") (~>> st (view _deck) (hash-keys)))
+    (list (append '("") (~>> st (view _deck) (hash-keys))) ; header row
           (list-cards "Deck" _deck st)
           (list-cards "Market" _market st)
           (list-cards "Player A" (>>> _hand (_player 'A)) st)
