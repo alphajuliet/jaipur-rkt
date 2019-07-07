@@ -48,17 +48,6 @@
             ([i (range n)])
     (move-cards (random-card st) _deck _target 1 state)))
 
-; Minimum number of items that can be sold
-; min-sell :: Hash Resource Int
-(define min-sell
-  (hash 'Diamond 2
-        'Gold 2
-        'Silver 2
-        'Cloth 1
-        'Spice 1
-        'Leather 1
-        'Camel 1))
-
 ; Number of cards in a player's hand, excluding camels
 (define (count-cards-excl-camels plyr st)
   (define total (hash-sum (view (_hand-plyr plyr) st)))
@@ -115,22 +104,53 @@
 ; Sell cards
 ; sell-cards :: Player -> Resource -> State -> State
 (define (sell-cards rsrc plyr st)
-  (define n (view (_hand-rsrc plyr rsrc) st))
-  (if (eq? rsrc 'Camel)
-      (raise-user-error 'sell-cards "Cannot sell camels.")
-      ;else
-      (if (>= n (hash-ref min-sell rsrc))
-          (~>> st
-               (over (_hand-rsrc plyr rsrc) (curry flip - n))
-               (take-tokens rsrc plyr n))
-          ;else
-          (raise-user-error 'sell-cards "Not enough cards to sell."))))
 
+  ; Helper function
+  (define min-sell
+    (hash 'Diamond 2 'Gold 2 'Silver 2
+          'Cloth 1 'Spice 1 'Leather 1
+          'Camel 1))
+  
+  (define n (view (_hand-rsrc plyr rsrc) st))
+
+  (cond
+    [(eq? rsrc 'Camel)
+     (raise-user-error 'sell-cards "Cannot sell camels.")]
+    
+    [(< n (hash-ref min-sell rsrc))
+     (raise-user-error 'sell-cards "Not enough resources to sell.")]
+    
+    [else
+     (~>> st
+          (over (_hand-rsrc plyr rsrc) (curry flip - n))
+          (take-tokens rsrc plyr n))]))
+  
 ;-------------------------------
 ; Exchange cards with the market. This includes using camels. @@TODO
-; exchange-cards :: Player -> Cards -> State -> State
-(define (exchange-cards plyr hand st)
-  st)
+; exchange-cards :: Player -> Cards -> Cards -> State -> State
+(define (exchange-cards plyr player-cards market-cards st)
+
+  ; Helper functions
+  (define (hash-min h) (apply min (hash-values h)))
+  (define (enough-cards? cards _hand)
+    (> 0 (hash-min (hash-sub (view _hand st) cards))))
+  
+  (cond
+    [(not (= (hash-sum player-cards) (hash-sum market-cards)))
+     (raise-user-error 'exchange-cards "Different number of resources being swapped.")]
+    
+    [(or (enough-cards? player-cards (_hand-plyr plyr))
+         (enough-cards? market-cards _market))
+     (raise-user-error 'exchange-cards "Cannot exchange resources that aren't in the hand.")]
+    
+    [else
+     (~>> st
+          ; Move player cards to market
+          (over _market (curry hash-add player-cards))
+          (over (_hand-plyr plyr) (curry hash-sub player-cards))
+          ; Move market cards to player
+          (over (_hand-plyr plyr) (curry hash-add market-cards))
+          (over _market (curry hash-sub market-cards)))]))
 
 ;===============================
 ; Run

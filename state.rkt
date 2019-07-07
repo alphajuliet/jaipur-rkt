@@ -72,12 +72,13 @@
 
 (define (ppst st)
   (displayln
-   (table->string #:align 'center
-                  (list (append '("") (~>> st (view _deck) (hash-keys))) ; header row
-                        (list-cards "Deck" _deck st)
-                        (list-cards "Market" _market st)
-                        (list-cards "Hand A" (>>> _hand (_player 'A)) st)
-                        (list-cards "Hand B" (>>> _hand (_player 'B)) st))))
+   (table->string
+    #:align 'center
+    (list (append '("") (~>> st (view _deck) (hash-keys))) ; header row
+          (list-cards "Deck" _deck st)
+          (list-cards "Market" _market st)
+          (list-cards "Hand A" (>>> _hand (_player 'A)) st)
+          (list-cards "Hand B" (>>> _hand (_player 'B)) st))))
   (displayln
    (table->string
     (list (append '("Score A") (list (view (>>> _points (_player 'A)) st)))
