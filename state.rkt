@@ -58,11 +58,6 @@
 (define (_rsrc r) (hash-ref-lens r))
 (define (_player p) (hash-ref-lens p))
 
-; Composite lenses
-(define (_market-rsrc r) (>>> _market (_rsrc r)))
-(define (_hand-plyr p) (>>> _hand (_player p)))
-(define (_hand-rsrc p r) (>>> _hand (_player p) (_rsrc r)))
-
 ;-------------------------------
 ; Pretty print the state
 
@@ -79,10 +74,12 @@
           (list-cards "Market" _market st)
           (list-cards "Hand A" (>>> _hand (_player 'A)) st)
           (list-cards "Hand B" (>>> _hand (_player 'B)) st))))
+  
   (displayln
    (table->string
     (list (append '("Score A") (list (view (>>> _points (_player 'A)) st)))
-          (append '("Score B") (list (view (>>> _points (_player 'B)) st)))))))
-  
+          (append '("Score B") (list (view (>>> _points (_player 'B)) st))))))
+
+  (displayln (view _tokens st)))
 
 ; The End
