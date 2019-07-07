@@ -68,18 +68,18 @@
 (define (ppst st)
   (displayln
    (table->string
-    #:align 'center
+    #:align 'center #:row-sep? #f
     (list (append '("") (~>> st (view _deck) (hash-keys))) ; header row
           (list-cards "Deck" _deck st)
           (list-cards "Market" _market st)
           (list-cards "Hand A" (>>> _hand (_player 'A)) st)
           (list-cards "Hand B" (>>> _hand (_player 'B)) st))))
   
-  (displayln
-   (table->string
-    (list (append '("Score A") (list (view (>>> _points (_player 'A)) st)))
-          (append '("Score B") (list (view (>>> _points (_player 'B)) st))))))
+  (displayln (format "Scores: A: ~a  B: ~a"
+                     (view (>>> _points (_player 'A)) st)
+                     (view (>>> _points (_player 'B)) st)))
 
-  (displayln (view _tokens st)))
+  (displayln "Tokens:")
+  (pretty-print (view _tokens st)))
 
 ; The End
