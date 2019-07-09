@@ -11,7 +11,11 @@
          "state.rkt")
 
 ; Exports
-(provide (all-defined-out))
+(provide init-game
+         take-card
+         sell-cards
+         exchange-cards
+         end-of-game?)
 
 ;===============================
 ; Utility functions
@@ -47,12 +51,6 @@
   (for/fold ([state st])
             ([i (range n)])
     (move-cards (random-card st) _deck _target 1 state)))
-
-; Number of cards in a player's hand, excluding camels
-(define (count-cards-excl-camels plyr st)
-  (define total (hash-sum (view (>>> _hand (_player plyr)) st)))
-  (define camels (view (>>> _hand (_player plyr) (_rsrc 'Camel)) st))
-  (- total camels))
 
 ; Take n resource tokens and add to player's score
 ; take-tokens :: Resource -> Player -> Int -> State -> State
@@ -183,8 +181,7 @@
 
 ;===============================
 ; Run
-(define s0 (init-game))
-(ppst s0)
+
 
 
 ;===============================
