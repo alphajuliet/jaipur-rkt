@@ -114,12 +114,6 @@
 ; Sell cards
 ; sell-cards :: Player -> Resource -> State -> State
 (define (sell-cards rsrc plyr st)
-
-  ; Helper function
-  (define min-sell
-    (hash 'Diamond 2 'Gold 2 'Silver 2
-          'Cloth 1 'Spice 1 'Leather 1
-          'Camel 1))
   
   (define n (view (>>> _hand (_player plyr) (_rsrc rsrc)) st))
 
@@ -127,7 +121,7 @@
     [(eq? rsrc 'Camel)
      (raise-user-error 'sell-cards "Cannot sell camels.")]
     
-    [(< n (hash-ref min-sell rsrc))
+    [(< n (hash-ref min-sell-hash rsrc))
      (raise-user-error 'sell-cards "Not enough resources to sell.")]
     
     [else
@@ -138,7 +132,7 @@
 ;-------------------------------
 ; Exchange cards with the market. This includes using camels. @@TODO
 ; exchange-cards :: Player -> Cards -> Cards -> State -> State
-(define (exchange-cards plyr player-cards market-cards st)
+(define (exchange-cards player-cards market-cards plyr st)
 
   ; Helper functions
   (define (hash-min h) (apply min (hash-values h)))
