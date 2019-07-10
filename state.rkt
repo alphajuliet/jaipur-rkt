@@ -7,8 +7,7 @@
          lens/common
          lens/data/hash
          threading
-         text-table
-         hash-ext)
+         text-table)
 
 ; Exports
 (provide (all-defined-out))
@@ -62,9 +61,18 @@
 ;-------------------------------
 ; Number of cards in a player's hand, excluding camels
 (define (count-cards-excl-camels plyr st)
-  (define total (hash-sum (view (>>> _hand (_player plyr)) st)))
+  (define total (foldl + 0 (hash-values (view (>>> _hand (_player plyr)) st))))
   (define camels (view (>>> _hand (_player plyr) (_rsrc 'Camel)) st))
   (- total camels))
+
+; The minimum sell quantity of each card
+(define min-sell-hash
+  (hash 'Diamond 2 'Gold 2 'Silver 2
+        'Cloth 1 'Spice 1 'Leather 1
+        'Camel 99))
+
+(define (min-sell k)
+  (hash-ref min-sell-hash k))
 
 ;-------------------------------
 ; Pretty print the state
