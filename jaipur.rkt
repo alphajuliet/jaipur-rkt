@@ -94,7 +94,7 @@
 ; take-card :: Player -> Resource -> State -> State
 (define (take-card rsrc plyr st)
 
-  (define ncamels (view (>>> _market (rsrc 'Camel)) st))
+  (define ncamels (view (>>> _market (_rsrc 'Camel)) st))
   
   (cond
     [(<= 7 (count-cards-excl-camels plyr st))

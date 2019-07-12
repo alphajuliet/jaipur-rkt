@@ -12,14 +12,22 @@
 
 ;-------------------------------
 ; Utilities
+
+; Random list element
+(define (random-element lst)
+  (list-ref lst (random (length lst))))
+
 (define-syntax-rule (append! lst elt)
   (set! lst (if (empty? lst)
-                (list elt)
+                elt
                 (append lst elt))))
 
 ; Return all the combinations of n keys from a hash with v_i copies of key k_i
 (define (key-combinations h n)
   (remove-duplicates (combinations (hash-enumerate h) n)))
+
+(define (eval-append lst target)
+  (eval (append lst (list target))))
 
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
@@ -43,17 +51,17 @@
   ; 2. Any (non-camel) resource from the market if player hand contains less than 7 cards
 
   (define (take-card-options)
-    (list
+    (append
      ; case 1
      (if (> market-camels 0)
-         `(take-card Camel ,plyr)
+         (list `(take-card 'Camel ',plyr))
          '())
      ; case 2
      (for/list ([(k v) (in-hash market-cards)]
                 #:unless (eq? k 'Camel)
                 #:when (> v 0)
                 #:when (< n-player-cards 7))
-       `(take-card ,k ,plyr))))
+       `(take-card ',k ',plyr))))
     
   ; ----------------
   ; Sell cards:
@@ -63,7 +71,7 @@
     (for/list ([(k v) (in-hash player-cards)]
                #:when (>= v (min-sell k))
                #:unless (eq? k 'Camel))
-      `(sell-cards ,k ,plyr)))
+      `(sell-cards ',k ',plyr)))
 
   ; ----------------
   ; Exchange cards:
@@ -74,7 +82,7 @@
   (define (exchange-cards-options)
              (for/list ([x (cartesian-product (key-combinations player-cards 2)
                                             (key-combinations (hash-remove market-cards 'Camel) 2))]) 
-             `(exchange-cards ,(hash-collect (car x)) ,(hash-collect (cadr x)) ,plyr)))
+             `(exchange-cards ,(hash-collect (car x)) ,(hash-collect (cadr x)) ',plyr)))
 
   (append! actions (take-card-options))
   (append! actions (sell-cards-options))
