@@ -17,17 +17,13 @@
 (define (random-element lst)
   (list-ref lst (random (length lst))))
 
-(define-syntax-rule (append! lst elt)
-  (set! lst (if (empty? lst)
-                elt
-                (append lst elt))))
-
 ; Return all the combinations of n keys from a hash with v_i copies of key k_i
 (define (key-combinations h n)
   (remove-duplicates (combinations (hash-enumerate h) n)))
 
-(define (eval-append lst target)
-  (eval (append lst (list target))))
+; Apply an action to a state
+(define (apply-action action state)
+  (eval (append action (list state))))
 
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
@@ -80,14 +76,14 @@
   ; - Source and target cards must be different
 
   (define (exchange-cards-options)
-             (for/list ([x (cartesian-product (key-combinations player-cards 2)
-                                            (key-combinations (hash-remove market-cards 'Camel) 2))]) 
-             `(exchange-cards ,(hash-collect (car x)) ,(hash-collect (cadr x)) ',plyr)))
+    (for/list
+        ([x (cartesian-product (key-combinations player-cards 2)
+                               (key-combinations (hash-remove market-cards 'Camel) 2))]) 
+      `(exchange-cards ,(hash-collect (car x)) ,(hash-collect (cadr x)) ',plyr)))
 
-  (append! actions (take-card-options))
-  (append! actions (sell-cards-options))
-  (append! actions (exchange-cards-options))
-  actions)
+  (append (take-card-options)
+          (sell-cards-options)
+          (exchange-cards-options)))
 
 (define s0 (init-game))
 
