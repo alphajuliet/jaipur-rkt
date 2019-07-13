@@ -90,7 +90,7 @@
           (list-cards "Hand A" (>>> _hand (_player 'A)) st)
           (list-cards "Hand B" (>>> _hand (_player 'B)) st))))
   
-  (displayln (format "Scores: A: ~a  B: ~a"
+  (displayln (format "Points A: ~a  B: ~a"
                      (view (>>> _points (_player 'A)) st)
                      (view (>>> _points (_player 'B)) st)))
 

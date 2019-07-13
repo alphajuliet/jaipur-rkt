@@ -16,6 +16,7 @@
          sell-cards
          exchange-cards
          end-of-game?
+         apply-end-bonus
          ; Action tests
          take-card-invalid?
          sell-cards-invalid?
@@ -221,6 +222,13 @@
   (or (= 0 (hash-sum (view _deck st)))
       (= 3 (length (filter (curry = 0) token-lengths)))))
 
+;-------------------------------
+; Add end-of-game bonus
+(define (apply-end-bonus st)
+  (if (> (view (>>> _hand (_player 'A) (_rsrc 'Camel)) st)
+         (view (>>> _hand (_player 'B) (_rsrc 'Camel)) st))
+      (over (>>> _points (_player 'A)) (curry + 5) st)
+      (over (>>> _points (_player 'B)) (curry + 5) st)))
 
 ;===============================
 ; Run
@@ -247,7 +255,7 @@
        (check-true (string? (take-card-invalid? 'Spice 'A s1))))
 
      ; Sell cards
-     (check-true (string? (sell-cards-invalid? 'Spice 'B s0)))
+     (check-true (string? (sell-cards-invalid? 'Diamond 'B s0)))
      (let* ([s1 (at (>>> _tokens (_rsrc 'Spice)) '(1) s0)]
             [s2 (sell-cards 'Spice 'A s1)])
        (check-equal? (view (>>> _tokens (_rsrc 'Spice)) s2) '()))

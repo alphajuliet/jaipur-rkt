@@ -123,11 +123,20 @@
   (define s (init-game))
   #f)
 
+; Choose a random action from a list.
+; Pick a random top-level action first, then a random one within that list.
+; choose-action :: List -> Action
+(define (choose-action lst)
+    (~>> lst
+        (group-by car)
+        (random-element)
+        (random-element)))
+
 ; Perform a random action by a given player
 (define (perform-random-action plyr st
                                #:print? [print? #f])
-  (define act
-    (random-element (available-actions plyr st)))
+  (define a (available-actions plyr st))
+  (define act (choose-action a))
   (if print? (displayln act) #t)
   (apply-action act st))
 
@@ -151,7 +160,13 @@
          (perform-random-action 'B #:print? print?)
          (set! st))
     (set! *game-states* (append *game-states* (list st))))
-  st)
+
+  (if print?
+        (begin
+          (displayln "Calculate end bonus:")
+          (ppst st))
+        #t)
+  (apply-end-bonus st))
 
 ;-------------------------------
 (define s0 (init-game #:seed 42))
