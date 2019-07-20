@@ -19,12 +19,21 @@
 (define (flip f a b) (f b a))
 
 ; Random list element
+; random-element :: List a -> a
 (define (random-element lst)
   (car (shuffle lst)))
 
 ; Return all the combinations of n keys from a hash with v_i copies of key k_i
+; key-combinations :: Hash a b -> Integer -> List a
 (define (key-combinations h n)
   (remove-duplicates (combinations (hash-enumerate h) n)))
+
+; Append an item to a list in-place, and return the item
+; append! :: List a -> a -> a
+(define-syntax-rule (append! lst item)
+  (begin
+    (set! lst (append lst (list item)))
+    item))
 
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
@@ -77,11 +86,12 @@
   ; - Source and target cards must be different
 
   (define (exchange-cards-options)
-    (for/list
-        ([x (cartesian-product (key-combinations player-cards 2)
-                               (key-combinations (hash-remove market-cards 'Camel) 2))]
-         ; Check that we're not ending up with more than 7 hand cards by swapping camels
-         ; error if camels being swapped + number of non-camel hand cards > 7
+    (for*/list
+        ([n (range 2 (add1 (count-cards-excl-camels market-cards)))]
+         [x (cartesian-product (key-combinations player-cards n)
+                               (key-combinations (hash-remove market-cards 'Camel) n))]
+         ; Check that we're not ending up with more than 7 hand cards by swapping camels.
+         ; Error if (camels being swapped + number of non-camel hand cards) > 7.
          #:unless (> (+ (count (curry eq? 'Camel) (car x))
                         (count-cards-excl-camels player-cards))
                      7))
@@ -113,11 +123,16 @@
 ; perform-random-action :: Player -> State -> State
 (define (perform-random-action plyr st
                                #:print? [print? #f])
-  (define a (available-actions plyr st))
-  (define act (choose-action a))
-  (if print? (displayln act) #t)
-  (set! *game-actions* (append *game-actions* (list act)))
-  (apply-action act st))
+  (define action
+    (~>> st
+         (available-actions plyr)
+         (choose-action)))
+
+  ; Logging
+  (cond [print? (displayln action)])
+  (append! *game-actions* action)
+  
+  (apply-action action st))
 
 ;-------------------------------
 ; Play a random game from an initial state
@@ -127,46 +142,52 @@
 (define (random-game initial-state
                      #:max-iterations [max-iter 100]
                      #:print? [print? #f])
-  (define st initial-state)
-  
-  (for ([iteration (range max-iter)]
-        #:break (end-of-game? st))
 
-    ; Print current state details, if selected
-    (if print?
-        (begin
-          (displayln (format "Iteration ~a:" iteration))
-          (ppst st))
-        #t)
+  ; Transparently print iteration details
+  (define (print-iteration-if flag i st)
+    (cond
+      [flag (begin
+              (displayln (format "Iteration ~a:" i))
+              (ppst st))])
+    st)
 
-    ; Perform a pair of moves
-    (~>> st
-         (perform-random-action 'A #:print? print?)
-         (perform-random-action 'B #:print? print?)
-         (set! st))
+  ; Transparently print bonus results
+  (define (print-bonus-if flag st)
+    (cond
+      [flag (begin
+              (displayln "Calculate end bonus:")
+              (ppst st))])
+    st)
 
-    ; Log the resulting state
-    (set! *game-states* (append *game-states* (list st))))
+  ; Iterate through the actions to generate a final state
+  (define sf
+    (for/fold ([st initial-state])
+              ([iteration (range max-iter)]
+               #:break (end-of-game? st))
+      (~>> st
+           (print-iteration-if print? iteration)
+           (perform-random-action 'A #:print? print?)
+           (perform-random-action 'B #:print? print?)
+           (append! *game-states*))))
 
-  (if print?
-      (begin
-        (displayln "Calculate end bonus:")
-        (ppst st))
-      #t)
-  (apply-end-bonus st))
+  (~>> sf
+       (apply-end-bonus)
+       (print-bonus-if print?)))
 
 ;-------------------------------
 ; Plot the size of the deck over time
 ; g is the list of encoded states
 #;(define (plot-game g)
-    (define deck (map (λ (s) (apply + (take (encode-state s) 7))) g))
-    (plot (lines
-           (for/list ([x (range (length deck))]
-                      [y (in-list deck)])
-             (list x y))
-           #:color 6 #:label "Size of deck")
-          #:x-label "Iteration"
-          #:y-label "Number of cards"))
+    (define deck
+      (map (λ (s) (apply + (take (encode-state s) 7))) g))
+    (plot
+     (lines (for/list ([x (range (length deck))]
+                       [y (in-list deck)])
+              (list x y))
+            #:color 6
+            #:label "Size of deck")
+     #:x-label "Iteration"
+     #:y-label "Number of cards"))
 
 ;-------------------------------
 (define s0 (init-game #:seed 1))

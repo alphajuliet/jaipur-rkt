@@ -21,8 +21,9 @@
 (define <<< lens-compose)
 
 ;-------------------------------
-; Define card types
-(define card-types '(Diamond Gold Silver Cloth Spice Leather Camel))
+; Define resource types
+; resources :: List Resource
+(define resources '(Diamond Gold Silver Cloth Spice Leather Camel))
 
 ;-------------------------------
 ; Define the initial game state 
@@ -34,6 +35,7 @@
                         'Cloth 8 'Spice 8 'Leather 10
                         'Camel 11))
 
+; initial-state :: State
 (define initial-state
   (hash  'Deck all-cards
          'Market empty-hand
@@ -61,15 +63,18 @@
 
 ;-------------------------------
 ; Number of cards in a hand, excluding camels
+; count-cards-excl-camels :: Hash Resource Int -> Int
 (define (count-cards-excl-camels h)
   (- (hash-sum h) (hash-ref h 'Camel)))
 
 ; The minimum sell quantity of each card
+; min-sell-hash :: Hand Resource Int
 (define min-sell-hash
   (hash 'Diamond 2 'Gold 2 'Silver 2
         'Cloth 1 'Spice 1 'Leather 1
         'Camel 99))
 
+; min-sell :: Resource -> Int
 (define (min-sell k)
   (hash-ref min-sell-hash k))
 

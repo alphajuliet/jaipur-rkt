@@ -16,7 +16,13 @@
 ;-------------------------------
 ; Utilities
 
+; Convert a list of numbers to an integer
+; list->int :: List Int -> Int
+(define (list->int x)
+  (foldl (λ (i acc) (+ i (* acc 10))) 0 x))
+
 ; Return all but the last element of lst
+; drop-last :: List a -> List a
 (define (drop-last lst)
   (take lst (sub1 (length lst))))
 
@@ -44,25 +50,27 @@
 
 ; Encode a state
 ; This is from the point of view of player A. All they can see is the
-; market, their own hand, and the token stacks. Assume that points are unimportant.
-; We encode it in ~16 bits
-; encode-state :: State -> Integer
+; market (m), their own hand (h), and the token stacks (t).
+; Assume that points are unimportant.
+; encode-state :: State -> List Integer
 (define (encode-state st)
-  (define (list->int x)
-    (foldl (λ (i acc) (+ i (* acc 10))) 0 x))
-
-  (~>> (append (hash-values (view _market st))
-               (hash-values (view (>>> _hand (_player 'A)) st))
-               (map length (hash-values (view _tokens st))))
-       (flatten)
-       (list->int)
-       (flip modulo 65521))) ; log_2(65521) = 15.9997
+  (define m (view _market st))
+  (define h (view (>>> _hand (_player 'A)) st))
+  (define t (view _tokens st))
+  
+  (list (hash-values m)
+        (hash-values h)
+        (map length (hash-values t))))
 
 ; Encode an action
-; We encode an action (without state) as an integer
+; We encode an action (without state) as an integer.
+; Currently encoded as 1-3.
 ; encode-action :: Action -> Integer
 (define (encode-action act)
-  (drop-last act))
+  (cond [(eq? (car act) 'take-card) 1]
+        [(eq? (car act) 'sell-cards) 2]
+        [else 3]))
+
 
 ; Run the Q-learning cycle
 (define (q-learn)
