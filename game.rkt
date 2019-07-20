@@ -26,10 +26,6 @@
 (define (key-combinations h n)
   (remove-duplicates (combinations (hash-enumerate h) n)))
 
-; Apply an action to a state
-(define (apply-action action state)
-  (eval (append action (list state))))
-
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
 ; available-actions :: State -> Player -> [Action]
@@ -95,6 +91,7 @@
           (sell-cards-options)
           (exchange-cards-options)))
 
+;-------------------------------
 ; Choose a random action from a list.
 ; Pick a random top-level action first, then a random one within that list.
 ; choose-action :: List -> Action
@@ -104,33 +101,51 @@
        (random-element)
        (random-element)))
 
+;-------------------------------
+; Apply an action to a state
+; apply-action :: Action -> State -> State
+(define (apply-action action state)
+  (eval (append action (list state))))
+
+;-------------------------------
 ; Perform a random action by a given player
+; Log all actions in a global variable *game-actions*
+; perform-random-action :: Player -> State -> State
 (define (perform-random-action plyr st
                                #:print? [print? #f])
   (define a (available-actions plyr st))
   (define act (choose-action a))
   (if print? (displayln act) #t)
+  (set! *game-actions* (append *game-actions* (list act)))
   (apply-action act st))
 
+;-------------------------------
 ; Play a random game from an initial state
 ; Write the intermediate states to a list called *game-states*
 ; Put an upper bound on the moves
-(define (random-game init-state
+; random-game :: State -> State
+(define (random-game initial-state
                      #:max-iterations [max-iter 100]
                      #:print? [print? #f])
-  (define st init-state)
+  (define st initial-state)
   
   (for ([iteration (range max-iter)]
         #:break (end-of-game? st))
+
+    ; Print current state details, if selected
     (if print?
         (begin
           (displayln (format "Iteration ~a:" iteration))
           (ppst st))
         #t)
+
+    ; Perform a pair of moves
     (~>> st
          (perform-random-action 'A #:print? print?)
          (perform-random-action 'B #:print? print?)
          (set! st))
+
+    ; Log the resulting state
     (set! *game-states* (append *game-states* (list st))))
 
   (if print?
@@ -154,8 +169,9 @@
           #:y-label "Number of cards"))
 
 ;-------------------------------
-(define s0 (init-game #:seed 42))
+(define s0 (init-game #:seed 1))
 (define *game-states* '())
+(define *game-actions* '())
 
 
 ;===============================
@@ -170,7 +186,7 @@
      "Unit tests"
      (check-equal? (+ 2 2) 4)
 
-     (check-equal? (length (available-actions 'A s0)) 12)
+     (check-equal? (length (available-actions 'A s0)) 9)
      
      ))
 

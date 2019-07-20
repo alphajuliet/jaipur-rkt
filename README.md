@@ -14,9 +14,9 @@ We encode game state as a deep hash: see the definition of `initial-state`. This
 Borrowing from Purescript, we can access a player's hand as `(view (>>> _hand (_player 'A)) state)`, and similarly use the verbs `at` and `over` to set and update values.
 
 Hands of cards are stored as hashes of numeric values, keyed by card type. This allows rudimentary arithmetic operations on hands that simplifies some of the manipulations. 
-These operatios come from my `[hash-ext](https://github.com/alphajuliet/hash-ext)` library. You'll need to install this package with `raco`.
+These operatios come from my [hash-ext](https://github.com/alphajuliet/hash-ext) library. You'll need to install this package with `raco`.
 
-Tokens are stored in the state as a hash of lists. This also defines a readable version of the state using `ppst`.
+Tokens are stored in the state as a hash of lists. This file also defines a readable version of the state using `ppst`.
 
 ## actions.rkt
 
@@ -47,7 +47,8 @@ If you want to see all the states and actions go by, turn on the printing...
 (random-game (init-game #:seed 42) #:print? #t)
 ```
 
-All the intermediate game states are collected for now into `*game-states*`.
+All the game actions are collected for now into `*game-actions*`. 
+Similarly, intermediate game states after each pair of player moves are collected into `*game-states*`.
 
 ## learn.rkt
 
