@@ -35,6 +35,12 @@
     (set! lst (append lst (list item)))
     item))
 
+; Execute f with arg if flag is true, and return the arg
+; This provides an optional side-effect in the middle of a ~>> threading chain.
+(define (do-if flag f arg . args)
+  (cond [flag (apply f (cons arg args))])
+  (last (cons arg args)))
+
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
 ; available-actions :: State -> Player -> [Action]
@@ -123,16 +129,12 @@
 ; perform-random-action :: Player -> State -> State
 (define (perform-random-action plyr st
                                #:print? [print? #f])
-  (define action
     (~>> st
          (available-actions plyr)
-         (choose-action)))
-
-  ; Logging
-  (cond [print? (displayln action)])
-  (append! *game-actions* action)
-  
-  (apply-action action st))
+         (choose-action)
+         (do-if print? displayln)
+         (append! *game-actions*)
+         (flip apply-action st)))
 
 ;-------------------------------
 ; Play a random game from an initial state
@@ -143,21 +145,13 @@
                      #:max-iterations [max-iter 100]
                      #:print? [print? #f])
 
-  ; Transparently print iteration details
-  (define (print-iteration-if flag i st)
-    (cond
-      [flag (begin
-              (displayln (format "Iteration ~a:" i))
-              (ppst st))])
-    st)
-
-  ; Transparently print bonus results
-  (define (print-bonus-if flag st)
-    (cond
-      [flag (begin
-              (displayln "Calculate end bonus:")
-              (ppst st))])
-    st)
+  (define (print-iteration i st)
+    (displayln (format "Iteration ~a:" i))
+    (ppst st))
+  
+  (define (print-bonus st)
+    (displayln "Calculate end bonus:")
+    (ppst st))
 
   ; Iterate through the actions to generate a final state
   (define sf
@@ -165,14 +159,14 @@
               ([iteration (range max-iter)]
                #:break (end-of-game? st))
       (~>> st
-           (print-iteration-if print? iteration)
+           (do-if print? print-iteration iteration)
            (perform-random-action 'A #:print? print?)
            (perform-random-action 'B #:print? print?)
            (append! *game-states*))))
 
   (~>> sf
        (apply-end-bonus)
-       (print-bonus-if print?)))
+       (do-if print? print-bonus)))
 
 ;-------------------------------
 ; Plot the size of the deck over time
@@ -206,12 +200,8 @@
     (test-suite
      "Unit tests"
      (check-equal? (+ 2 2) 4)
-
-     (check-equal? (length (available-actions 'A s0)) 9)
-     
-     ))
+     (check-equal? (length (available-actions 'A s0)) 9)))
 
   (run-tests learn-tests))
-
 
 ; The End
