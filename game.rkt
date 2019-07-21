@@ -37,9 +37,10 @@
 
 ; Execute f with arg if flag is true, and return the arg
 ; This provides an optional side-effect in the middle of a ~>> threading chain.
-(define (do-if flag f arg . args)
-  (cond [flag (apply f (cons arg args))])
-  (last (cons arg args)))
+(define (do-if flag f arg . rest)
+  (begin
+    (cond [flag (apply f (cons arg rest))])
+    (last (cons arg rest))))
 
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
@@ -129,12 +130,17 @@
 ; perform-random-action :: Player -> State -> State
 (define (perform-random-action plyr st
                                #:print? [print? #f])
-    (~>> st
-         (available-actions plyr)
-         (choose-action)
-         (do-if print? displayln)
-         (append! *game-actions*)
-         (flip apply-action st)))
+  
+  (define (print-action-if flag action)
+    (cond [flag (displayln action)])
+    action)
+
+  (~>> st
+       (available-actions plyr)
+       (choose-action)
+       (print-action-if print?)
+       (append! *game*)
+       (flip apply-action st)))
 
 ;-------------------------------
 ; Play a random game from an initial state
@@ -145,28 +151,32 @@
                      #:max-iterations [max-iter 100]
                      #:print? [print? #f])
 
-  (define (print-iteration i st)
-    (displayln (format "Iteration ~a:" i))
-    (ppst st))
+  ; Printing functions
+  (define (print-header-if flag i st)
+    (cond [flag (displayln (format "\n# Iteration ~a:" i))])
+    st)
+
+  (define (print-state-if flag st)
+    (cond [flag (ppst st)])
+    st)
   
-  (define (print-bonus st)
-    (displayln "Calculate end bonus:")
-    (ppst st))
-
   ; Iterate through the actions to generate a final state
-  (define sf
-    (for/fold ([st initial-state])
-              ([iteration (range max-iter)]
-               #:break (end-of-game? st))
-      (~>> st
-           (do-if print? print-iteration iteration)
-           (perform-random-action 'A #:print? print?)
-           (perform-random-action 'B #:print? print?)
-           (append! *game-states*))))
+  (cond [print? (displayln "# New game\n")])
+  (~>> (for/fold ([st initial-state])
+                 ([iteration (range max-iter)]
+                  #:break (end-of-game? st))
+         (~>> st
+              (print-header-if print? iteration)
+              (perform-random-action 'A #:print? print?)
+              (perform-random-action 'B #:print? print?)
+              (append! *game*)
+              (print-state-if print?)))
 
-  (~>> sf
+       ; Add the bonus points for the more camels
+       (print-header-if print? "Bonus")
        (apply-end-bonus)
-       (do-if print? print-bonus)))
+       (append! *game*)
+       (print-state-if print?)))
 
 ;-------------------------------
 ; Plot the size of the deck over time
@@ -184,10 +194,22 @@
      #:y-label "Number of cards"))
 
 ;-------------------------------
-(define s0 (init-game #:seed 1))
-(define *game-states* '())
-(define *game-actions* '())
+; Write a random game to a text file
+; write-random-game :: String -> State -> State
+(define (write-random-game fname s0)
+  (define out
+    (open-output-file fname #:exists 'append))
+  (parameterize ([current-output-port out])
+    (random-game s0 #:print? #t))
+  (close-output-port out))
 
+;-------------------------------
+(define s0 (init-game #:seed 1))
+
+; Record the game
+(define *game* '())
+(define (list-states) (filter hash? *game*))
+(define (list-actions) (filter (compose not hash?) *game*))
 
 ;===============================
 ; Unit tests

@@ -60,7 +60,9 @@
   
   (list (hash-values m)
         (hash-values h)
-        (map length (hash-values t))))
+        (map length (hash-values t))
+        #;(map (compose sgn length)
+             (hash-values t))))
 
 ; Encode an action
 ; We encode an action (without state) as an integer.
@@ -77,11 +79,13 @@
   (define s (init-game))
   #f)
 
+
 ;-------------------------------
 ; Explore
 
 (define (show-actions)
-  (~>> *game-actions*
+  (~>> *game*
+       (list-actions)
        (filter (action-player 'A))
        (map encode-action)))
 

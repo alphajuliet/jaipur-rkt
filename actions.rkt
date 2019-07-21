@@ -69,7 +69,7 @@
   (define t (view (>>> _tokens (_rsrc rsrc)) st))
   
   (define-values (x y)
-    (if (> n (length t))
+    (if (>= n (length t))
         (values t '())
         ;else
         (split-at t n)))
@@ -82,7 +82,8 @@
       [else 0]))
 
   (~>> st
-       (over (>>> _points (_player plyr)) (curry + (list-sum x) (bonus-points n)))
+       (over (>>> _points (_player plyr))
+             (curry + (list-sum x) (bonus-points n)))
        (at (>>> _tokens (_rsrc rsrc)) y)))
 
 
@@ -126,19 +127,18 @@
   (define player-hand (view (>>> _hand (_player plyr)) st))
   (define error? (take-card-invalid? rsrc plyr st))
   
-  (cond
-    [(string? error?)
-     (raise-user-error 'take-card error?)]
+  (cond [(string? error?)
+         (raise-user-error 'take-card error?)]
 
-    [(eq? rsrc 'Camel)
-     (~>> st
-          (move-cards rsrc _market (>>> _hand (_player plyr)) n-market-camels)
-          (deal-cards _market n-market-camels))]
+        [(eq? rsrc 'Camel)
+         (~>> st
+              (move-cards rsrc _market (>>> _hand (_player plyr)) n-market-camels)
+              (deal-cards _market n-market-camels))]
 
-    [else
-     (~>> st
-          (move-cards rsrc _market (>>> _hand (_player plyr)) 1)
-          (deal-cards _market 1))]))
+        [else
+         (~>> st
+              (move-cards rsrc _market (>>> _hand (_player plyr)) 1)
+              (deal-cards _market 1))]))
 
 ;-------------------------------
 ; Sell cards
@@ -159,13 +159,12 @@
   (define n (view (>>> _hand (_player plyr) (_rsrc rsrc)) st))
   (define error? (sell-cards-invalid? rsrc plyr st))
 
-  (cond
-    [(string? error?)
-     (raise-user-error 'sell-cards error?)]
-    [else
-     (~>> st
-          (over (>>> _hand (_player plyr) (_rsrc rsrc)) (curry flip - n))
-          (take-tokens rsrc plyr n))]))
+  (cond [(string? error?)
+         (raise-user-error 'sell-cards error?)]
+        [else
+         (~>> st
+              (over (>>> _hand (_player plyr) (_rsrc rsrc)) (curry flip - n))
+              (take-tokens rsrc plyr n))]))
   
 ;-------------------------------
 ; Exchange cards with the market. This includes using camels. @@TODO
