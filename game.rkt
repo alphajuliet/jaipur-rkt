@@ -7,6 +7,7 @@
          "actions.rkt"
          threading
          hash-ext
+         racket/trace
          ;plot
          )
 
@@ -122,7 +123,10 @@
 ; Apply an action to a state
 ; apply-action :: Action -> State -> State
 (define (apply-action action state)
-  (eval (append action (list state))))
+  (define st (eval (append action (list state))))
+  (append! *game* action)
+  (append! *game* st)
+  st)
 
 ;-------------------------------
 ; Perform a random action by a given player
@@ -139,7 +143,6 @@
        (available-actions plyr)
        (choose-action)
        (print-action-if print?)
-       (append! *game*)
        (flip apply-action st)))
 
 ;-------------------------------
@@ -169,13 +172,11 @@
               (print-header-if print? iteration)
               (perform-random-action 'A #:print? print?)
               (perform-random-action 'B #:print? print?)
-              (append! *game*)
               (print-state-if print?)))
 
        ; Add the bonus points for the more camels
        (print-header-if print? "Bonus")
        (apply-end-bonus)
-       (append! *game*)
        (print-state-if print?)))
 
 ;-------------------------------
@@ -203,13 +204,24 @@
     (random-game s0 #:print? #t))
   (close-output-port out))
 
+
 ;-------------------------------
 (define s0 (init-game #:seed 1))
 
 ; Record the game
 (define *game* '())
-(define (list-states) (filter hash? *game*))
-(define (list-actions) (filter (compose not hash?) *game*))
+(define (list-states g) (filter hash? g))
+(define (list-actions g) (filter (compose not hash?) g))
+
+; Write the *game* list to a file
+(define (write-game #:action (action-fn identity)
+                    #:state (state-fn identity))
+  (define out (open-output-file "game.txt" #:exists 'replace))
+  (for ([e (in-list *game*)])
+    (let ([p (cond [(hash? e) (state-fn e)]
+                    [else (action-fn e)])])
+       (println p out)))
+  (close-output-port out))
 
 ;===============================
 ; Unit tests

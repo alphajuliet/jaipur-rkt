@@ -89,4 +89,9 @@
        (filter (action-player 'A))
        (map encode-action)))
 
+(define (show-states)
+  (~>> *game*
+       (list-states)
+       (map encode-state)))
+
 ; The End
