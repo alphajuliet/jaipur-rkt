@@ -164,6 +164,7 @@
     st)
   
   ; Iterate through the actions to generate a final state
+  (set! *game* '())
   (cond [print? (displayln "# New game\n")])
   (~>> (for/fold ([st initial-state])
                  ([iteration (range max-iter)]
@@ -214,14 +215,16 @@
 (define (list-actions g) (filter (compose not hash?) g))
 
 ; Write the *game* list to a file
-(define (write-game #:action (action-fn identity)
+(define (write-game fname
+                    #:action (action-fn identity)
                     #:state (state-fn identity))
-  (define out (open-output-file "game.txt" #:exists 'replace))
-  (for ([e (in-list *game*)])
-    (let ([p (cond [(hash? e) (state-fn e)]
-                    [else (action-fn e)])])
-       (println p out)))
-  (close-output-port out))
+  
+  (call-with-output-file fname #:exists 'replace
+    (λ (out)
+      (for ([e (in-list *game*)])
+        (let ([p (cond [(hash? e) (state-fn e)]
+                       [else (action-fn e)])])
+          (println p out))))))
 
 ;===============================
 ; Unit tests

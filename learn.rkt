@@ -54,15 +54,17 @@
 ; Assume that points are unimportant.
 ; encode-state :: State -> List Integer
 (define (encode-state st)
-  (define m (view _market st))
-  (define h (view (>>> _hand (_player 'A)) st))
-  (define t (view _tokens st))
-  
-  (list (hash-values m)
-        (hash-values h)
-        (map length (hash-values t))
-        #;(map (compose sgn length)
-             (hash-values t))))
+  (define m (~>> st
+                 (view _market)
+                 (hash-values)))
+  (define h (~>> st
+                 (view (>>> _hand (_player 'A)))
+                 (hash-values)))
+  (define t (~>> st
+                 (view _tokens)
+                 (hash-values)
+                 (map length)))
+  (list m h t))
 
 ; Encode an action
 ; We encode an action (without state) as an integer.
@@ -79,9 +81,15 @@
   (define s (init-game))
   #f)
 
-
 ;-------------------------------
 ; Explore
+
+; Run n random games and write them to files
+(define (n-random-games (n 2))
+  (for ([i (in-range 1 n)])
+    (random-game (init-game #:seed i))
+    (write-game (format "games/game-~a.txt" i) #:state encode-state)))
+
 
 (define (show-actions)
   (~>> *game*

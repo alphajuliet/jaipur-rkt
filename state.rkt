@@ -48,7 +48,8 @@
                        'Silver '(5 5 5 5 5)
                        'Cloth '(5 3 3 2 2 1 1)
                        'Spice '(5 3 3 2 2 1 1)
-                       'Leather '(4 3 2 1 1 1 1 1 1))))
+                       'Leather '(4 3 2 1 1 1 1 1 1)
+                       'Camel '())))
 
 ;-------------------------------
 ; Lenses into the state
