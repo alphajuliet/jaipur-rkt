@@ -22,6 +22,10 @@
 (define (random-element lst)
   (car (shuffle lst)))
 
+; Sum a list
+; list-sum :: ∀ a. [a] -> a
+(define (list-sum lst) (foldl + 0 lst))
+
 ; Convert a list of numbers to an integer
 ; list->int :: [Int] -> Int
 (define (list->int x (base 10))

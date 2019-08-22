@@ -8,7 +8,8 @@
          lens/data/hash
          threading
          hash-ext
-         "state.rkt")
+         "state.rkt"
+         "util.rkt")
 
 ; Exports
 (provide init-game
@@ -26,12 +27,6 @@
 ;===============================
 ; Utility functions
 
-(define (random-element lst)
-  (car (shuffle lst)))
-
-(define (flip f a b) (f b a))
-
-(define (list-sum lst) (foldl + 0 lst))
 
 ;-------------------------------
 ; Random card from the deck
