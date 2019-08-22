@@ -5,6 +5,7 @@
 ; Imports
 (require "state.rkt"
          "actions.rkt"
+         "util.rkt"
          threading
          hash-ext
          racket/trace
@@ -16,25 +17,6 @@
 
 ;-------------------------------
 ; Utilities
-
-(define (flip f a b) (f b a))
-
-; Random list element
-; random-element :: List a -> a
-(define (random-element lst)
-  (car (shuffle lst)))
-
-; Return all the combinations of n keys from a hash with v_i copies of key k_i
-; key-combinations :: Hash a b -> Integer -> List a
-(define (key-combinations h n)
-  (remove-duplicates (combinations (hash-enumerate h) n)))
-
-; Append an item to a list in-place, and return the item
-; append! :: List a -> a -> a
-(define-syntax-rule (append! lst item)
-  (begin
-    (set! lst (append lst (list item)))
-    item))
 
 ; Execute f with arg if flag is true, and return the arg
 ; This provides an optional side-effect in the middle of a ~>> threading chain.
@@ -166,6 +148,7 @@
   ; Iterate through the actions to generate a final state
   (set! *game* '())
   (cond [print? (displayln "# New game\n")])
+  (print-state-if print? initial-state)
   (~>> (for/fold ([st initial-state])
                  ([iteration (range max-iter)]
                   #:break (end-of-game? st))
