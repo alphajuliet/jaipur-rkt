@@ -4,7 +4,8 @@
 ; AndrewJ 2019-08-22
 
 ; Imports
-(require hash-ext)
+(require hash-ext
+         data/maybe)
 
 ; Exports
 (provide (all-defined-out))
@@ -54,6 +55,28 @@
 (define (key-combinations h n)
   (remove-duplicates (combinations (hash-enumerate h) n)))
 
+; Safe hash-ref using Maybe functor
+(define (hash-ref+ hash ref)
+  (with-maybe-handler exn:fail:contract?
+    (hash-ref hash ref)))
 
+;===============================
+; Unit tests
+
+(module+ test
+  (require rackunit
+           rackunit/text-ui)
+  
+  (define util-tests
+    (test-suite
+     "Unit tests"
+     (check-equal? (list-sum (range 5)) 10)
+     (check-equal? (list->int '(1 2 3 4)) 1234)
+     (check-equal? (drop-last '(1 2 3 4)) '(1 2 3))
+
+     (check-equal? (hash-ref+ (hash 'a 1) 'b) nothing)
+     (check-equal? (hash-ref+ (hash 'a 1) 'a) (just 1))))
+
+  (run-tests util-tests))
 
 ; The End

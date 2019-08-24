@@ -8,14 +8,17 @@
          "actions.rkt"
          "game.rkt"
          threading
-         math/array
-         hash-ext)
+         hash-ext
+         data/monad
+         data/maybe)
 
 ; Exports
 (provide (all-defined-out))
 
 ;-------------------------------
 ; Utilities
+
+(define >>= chain)
 
 ; Filter actions on a given player
 ; Usage: (filter (action-player 'A) actions-list)
@@ -33,25 +36,13 @@
             (sort _ string<=?))))
 
 ;-------------------------------
-; Q-learning algorithm
-;
-; Algorithm parameters: step size α ∈ (0, 1], small ε > 0
-; Initialise Q(s, a), for all s ∈ S+, a ∈ A(s), arbitrarily except that Q(terminal, ·) = 0
-;
-; Loop for each episode:
-;	Initialise S
-;	Loop for each step of episode:
-;		Choose A from S using policy derived from Q (e.g., ε-greedy) 
-;		Take action A, observe R, S'
-;		Q(S,A) ← Q(S,A) + α[R + γ max_a Q(S',a) – Q(S,A)]
-;		S ← S'
-;	until S is terminal
-
+; Encodings
 
 ; Encode a state
 ; This is from the point of view of player A. All they can see is the
 ; market (m), their own hand (h), and the token stacks (t).
 ; Return the current score for player A too.
+
 ; encode-state :: State -> Integer
 (define (encode-state st)
   (define m (~>> st
@@ -76,11 +67,12 @@
 ; Currently encoded as a list. The first element is a code 0-2 for the action
 ; followed by either 1 or 2 one-hot-encoded parameters for the resource.
 ; e.g. (encode-action '(take-card 'Camel 'A)) => '(0 64)
-; encode-action :: Action -> Integer
+
+; encode-action :: Action -> [Integer]
 (define (encode-action act)
 
   ; Convert a hash to a boolean 1-hot encoded decimal number
-  ; (1-hot #('Camel 1 'Silver 5)) => 36
+  ; (1-hot '#hash('Camel 1 'Silver 5)) => 36
   (define (1-hot h)
     (~>> h
          (hash-add _ empty-hand)
@@ -96,9 +88,53 @@
           (list 2 (1-hot (second act)) (1-hot (third act))) ]))
 
 
+;-------------------------------
+; Q-learning algorithm
+;
+; Algorithm parameters: step size α ∈ (0, 1], small ε > 0
+; Initialise Q(s, a), for all s ∈ S+, a ∈ A(s), arbitrarily except that Q(terminal, ·) = 0
+;
+; Loop for each episode:
+;	Initialise S
+;	Loop for each step of episode:
+;		Choose A from S using policy derived from Q (e.g., ε-greedy) 
+;		Take action A, observe R, S'
+;		Q(S,A) ← Q(S,A) + α[R + γ max_a Q(S',a) – Q(S,A)]
+;		S ← S'
+;	until S is terminal
+
+; Define the mapping Q: State x Action -> Real
+; This is too large and sparse for an array, so we use a (mutable) hash of (mutable) hashes.
+(define Q (make-hash))
+
+; Q-set! :: ∀ a b. a -> b -> Real -> Real
+(define (Q-set! state action value)
+  (hash-set! Q state
+             (make-hash `((,action ,value))))
+  value)
+
+; Do a safe lookup
+; Q-ref :: ∀ a b. a -> b -> Real 
+(define (Q-ref state action)
+  (~>> (>>= (λ (m) (hash-ref+ m action))
+            (hash-ref+ Q state))
+       (from-just '(0.))
+       (car)))
+
+
+(define gamma 0.99) ; discounting factor
+(define alpha 0.5)  ; soft update parameter
+
+
 ; Run the Q-learning cycle
-(define (q-learn)
-  (define s (init-game))
+(define (update-Q curr-state reward action next-state done?)
+  
+  (define next-actions (available-actions next-state))
+  (define next-states (map (λ (a) (apply-action a curr-state))
+                           next-actions))
+  (define max-q-next
+    (apply max (Q-ref (encode-state next-states)
+                      (encode-action action))))
   #f)
 
 ;-------------------------------

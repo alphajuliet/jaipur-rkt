@@ -11,7 +11,8 @@ The code is split up into the following modules by source file, starting from th
 ## state.rkt
 
 We encode game state as a deep hash: see the definition of `initial-state`. This gives maximum readability, and we define composable lenses to access all the pieces.
-Borrowing from Purescript, we can access a player's hand as `(view (>>> _hand (_player 'A)) state)`, where `>>>` is lens composition. Similarly, we can use the verbs `at` and `over` to set and update values.
+Borrowing from Purescript, we can access a player's hand as `(view (>>> _hand (_player 'A)) state)`, where `>>>` is left-to-right lens composition (i.e. the thrush operator). 
+Similarly, we can use the verbs `at` and `over` to set and update values.
 
 Hands of cards are stored as hashes of numeric values, keyed by card type. This allows rudimentary arithmetic operations on hands that simplifies some of the manipulations. 
 These operatios come from my [hash-ext](https://github.com/alphajuliet/hash-ext) library. You'll need to install this package with `raco`.
