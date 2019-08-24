@@ -147,13 +147,15 @@
 ;-------------------------------
 ; Explore
 
-; Run n random games and write them to files
-(define (n-random-games (n 2))
+
+
+;-------------------------------
+; Run n games with a given policy and write them to game files
+
+(define (n-games policy (n 2))
   (for ([i (in-range 0 n)])
-    (random-game (init-game #:seed i))
-    (write-game (format "games/game-~a.txt" i)
-                #:state encode-state
-                #:action encode-action)))
+    (play-game policy (init-game #:seed i))
+    (write-game (format "games/game-~a.txt" i))))
 
 (define (scoreA st)
   (view (>>> _points (_player 'A)) st))
@@ -175,8 +177,6 @@
 (module+ test
   (require rackunit
            rackunit/text-ui)
-
-
   
   (define learn-tests
     (test-suite

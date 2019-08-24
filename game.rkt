@@ -95,7 +95,7 @@
 ; Choose a random action from a list.
 ; Pick a random top-level action first, then a random one within that list.
 ; choose-action :: List -> Action
-(define (choose-action lst)
+(define (pick-random-action lst)
   (~>> lst
        (group-by car)
        (random-element)
@@ -111,30 +111,29 @@
   st)
 
 ;-------------------------------
-; Perform a random action by a given player
-; Log all actions in a global variable *game-actions*
-; perform-random-action :: Player -> State -> State
-(define (perform-random-action plyr st
-                               #:print? [print? #f])
+; Apply a given policy function to generate the next state
+; Log all actions in a global variable *game*
+
+; apply-policy :: (Player -> State -> Action) -> State -> State
+(define (apply-policy policy plyr st
+                      #:print? [print? #f])
   
   (define (print-action-if flag action)
     (cond [flag (displayln action)])
     action)
 
   (~>> st
-       (available-actions plyr)
-       (choose-action)
+       (policy plyr) ; Player -> State -> Action
        (print-action-if print?)
        (flip apply-action st)))
 
+
 ;-------------------------------
-; Play a random game from an initial state
-; Write the intermediate states to a list called *game-states*
-; Put an upper bound on the moves
-; random-game :: State -> State
-(define (random-game initial-state
-                     #:max-iterations [max-iter 100]
-                     #:print? [print? #f])
+; Play a game, using a given policy function
+; play-game :: (Player -> State -> Action) -> State -> State
+(define (play-game policy initial-state
+                   #:max-iterations [max-iter 100]
+                   #:print? [print? #f])
 
   ; Printing functions
   (define (print-header-if flag i st)
@@ -154,8 +153,8 @@
                   #:break (end-of-game? st))
          (~>> st
               (print-header-if print? iteration)
-              (perform-random-action 'A #:print? print?)
-              (perform-random-action 'B #:print? print?)
+              (apply-policy policy 'A #:print? print?)
+              (apply-policy policy 'B #:print? print?)
               (print-state-if print?)))
 
        ; Add the bonus points for the more camels
@@ -163,20 +162,18 @@
        (apply-end-bonus)
        (print-state-if print?)))
 
+
 ;-------------------------------
-; Plot the size of the deck over time
-; g is the list of encoded states
-#;(define (plot-game g)
-    (define deck
-      (map (λ (s) (apply + (take (encode-state s) 7))) g))
-    (plot
-     (lines (for/list ([x (range (length deck))]
-                       [y (in-list deck)])
-              (list x y))
-            #:color 6
-            #:label "Size of deck")
-     #:x-label "Iteration"
-     #:y-label "Number of cards"))
+; Play a completely random game
+
+(define (policy-random player state)
+  (pick-random-action (available-actions player state)))
+
+(define (random-game initial-state
+                     #:print? [print? #f])
+  (play-game policy-random initial-state
+             #:print? print?))
+
 
 ;-------------------------------
 ; Write a random game to a text file
@@ -188,15 +185,7 @@
     (random-game s0 #:print? #t))
   (close-output-port out))
 
-
 ;-------------------------------
-(define s0 (init-game #:seed 1))
-
-; Record the game
-(define *game* '())
-(define (list-states g) (filter hash? g))
-(define (list-actions g) (filter (compose not hash?) g))
-
 ; Write the *game* list to a file
 (define (write-game fname
                     #:action (action-fn identity)
@@ -208,6 +197,15 @@
         (let ([p (cond [(hash? e) (state-fn e)]
                        [else (action-fn e)])])
           (println p out))))))
+
+;-------------------------------
+(define s0 (init-game #:seed 1))
+
+; Record the game
+(define *game* '())
+(define (list-states g) (filter hash? g))
+(define (list-actions g) (filter (compose not hash?) g))
+
 
 ;===============================
 ; Unit tests
