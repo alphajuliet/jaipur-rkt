@@ -216,12 +216,12 @@
   (require rackunit
            rackunit/text-ui)
   
-  (define learn-tests
+  (define game-tests
     (test-suite
      "Unit tests"
      (check-equal? (+ 2 2) 4)
      (check-equal? (length (available-actions 'A s0)) 9)))
 
-  (run-tests learn-tests))
+  (run-tests game-tests))
 
 ; The End

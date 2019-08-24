@@ -109,8 +109,10 @@
 
 ; Q-set! :: ∀ a b. a -> b -> Real -> Real
 (define (Q-set! state action value)
-  (hash-set! Q state
-             (make-hash `((,action ,value))))
+  (if (hash-has-key? Q state)
+      (hash-set! (hash-ref Q state) action value)
+      ; else
+      (hash-set! Q state (make-hash `((,action . ,value)))))
   value)
 
 ; Do a safe lookup
@@ -118,17 +120,22 @@
 (define (Q-ref state action)
   (~>> (>>= (λ (m) (hash-ref+ m action))
             (hash-ref+ Q state))
-       (from-just '(0.))
-       (car)))
+       (from-just '(0.))))
 
 
 (define gamma 0.99) ; discounting factor
 (define alpha 0.5)  ; soft update parameter
 
+; Return the action with the most points for player A
+(define (argmax-points state)
+  (define (action->points act st)
+    (view (>>> _points (_player 'A))
+          (apply-action act state)))
+  (argmax (λ (act) (action->points act state))
+          (available-actions 'A state)))
 
 ; Run the Q-learning cycle
 (define (update-Q curr-state reward action next-state done?)
-  
   (define next-actions (available-actions next-state))
   (define next-states (map (λ (a) (apply-action a curr-state))
                            next-actions))
@@ -161,5 +168,30 @@
   (~>> *game*
        (list-states)
        (map encode-state)))
+
+;===============================
+; Unit tests
+
+(module+ test
+  (require rackunit
+           rackunit/text-ui)
+
+
+  
+  (define learn-tests
+    (test-suite
+     "Unit tests"
+     (check-equal? (encode-state s0) 365435)
+     
+     (let ([x (Q-set! 1234 5678 1.0)]
+           [y (Q-set! 1234 5679 2.0)])
+       (check-equal? (Q-ref 1234 5678) 1.0)
+       (check-equal? (Q-ref 1234 5679) 2.0))
+     #;(check-equal? (argmax-points s0) '(sell-cards 'Spice 'A))
+     ))
+
+  (run-tests learn-tests))
+
+
 
 ; The End
