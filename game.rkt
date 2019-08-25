@@ -21,9 +21,10 @@
          write-game
          
          s0
+         *game*
          list-states
          list-actions
-         *game*)
+         iterations)
 
 ;-------------------------------
 ; Utilities
@@ -118,10 +119,7 @@
 ; Apply an action to a state
 ; apply-action :: Action -> State -> State
 (define (apply-action action state)
-  (define st (eval (append action (list state))))
-  (append! *game* action)
-  (append! *game* st)
-  st)
+  (eval (append action (list state))))
 
 ;-------------------------------
 ; Apply a given policy function to generate the next state
@@ -130,8 +128,10 @@
 ; apply-policy :: Policy -> State -> State
 (define (apply-policy policy plyr st)  
   (~>> st
-       (policy plyr) ; Player -> State -> Action
-       (apply-action _ st)))
+       (policy plyr) ; Action
+       (append! *game*)
+       (apply-action _ st)
+       (append! *game*)))
 
 ;-------------------------------
 ; Play a game, using a given policy function
@@ -188,6 +188,7 @@
 (define *print*? #f)
 (define (list-states g) (filter hash? g))
 (define (list-actions g) (filter list? g))
+(define (iterations g) (last (filter string? g)))
 
 
 ;===============================
