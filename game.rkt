@@ -13,7 +13,17 @@
          )
 
 ; Exports
-(provide (all-defined-out))
+(provide available-actions
+         apply-action
+         apply-policy
+         play-game
+         policy-random
+         write-game
+         
+         s0
+         list-states
+         list-actions
+         *game*)
 
 ;-------------------------------
 ; Utilities
@@ -24,6 +34,9 @@
   (begin
     (cond [flag (apply f (cons arg rest))])
     (last (cons arg rest))))
+
+#;(define-syntax (do-if* test? proc arg)
+  `((λ (x) (cond [,test? ,proc]) x)))
 
 ;-------------------------------
 ; List available actions, given the current state, and whose turn it is
@@ -112,78 +125,47 @@
 
 ;-------------------------------
 ; Apply a given policy function to generate the next state
-; Log all actions in a global variable *game*
 
-; apply-policy :: (Player -> State -> Action) -> State -> State
-(define (apply-policy policy plyr st
-                      #:print? [print? #f])
-  
-  (define (print-action-if flag action)
-    (cond [flag (displayln action)])
-    action)
-
+; type Policy = Player -> State -> Action
+; apply-policy :: Policy -> State -> State
+(define (apply-policy policy plyr st)  
   (~>> st
        (policy plyr) ; Player -> State -> Action
-       (print-action-if print?)
-       (flip apply-action st)))
-
+       (apply-action _ st)))
 
 ;-------------------------------
 ; Play a game, using a given policy function
-; play-game :: (Player -> State -> Action) -> State -> State
+; play-game :: Policy -> State -> State
 (define (play-game policy initial-state
-                   #:max-iterations [max-iter 100]
-                   #:print? [print? #f])
+                   #:max-iterations [max-iter 100])
 
-  ; Printing functions
-  (define (print-header-if flag i st)
-    (cond [flag (displayln (format "\n# Iteration ~a:" i))])
-    st)
-
-  (define (print-state-if flag st)
-    (cond [flag (ppst st)])
-    st)
-  
   ; Iterate through the actions to generate a final state
   (set! *game* '())
-  (cond [print? (displayln "# New game\n")])
-  (print-state-if print? initial-state)
+  (append! *game* initial-state)
   (~>> (for/fold ([st initial-state])
                  ([iteration (range max-iter)]
+                  #:break (> iteration max-iter)
                   #:break (end-of-game? st))
          (~>> st
-              (print-header-if print? iteration)
-              (apply-policy policy 'A #:print? print?)
-              (apply-policy policy 'B #:print? print?)
-              (print-state-if print?)))
+              (begin (append! *game* (format "## Iteration: ~a" iteration)))
+              (apply-policy policy 'A)
+              (apply-policy policy 'B)))
 
        ; Add the bonus points for the more camels
-       (print-header-if print? "Bonus")
-       (apply-end-bonus)
-       (print-state-if print?)))
+       (apply-end-bonus)))
 
 
 ;-------------------------------
 ; Play a completely random game
 
+; policy-random :: Policy
 (define (policy-random player state)
   (pick-random-action (available-actions player state)))
 
-(define (random-game initial-state
-                     #:print? [print? #f])
-  (play-game policy-random initial-state
-             #:print? print?))
+; random-game :: State -> State
+(define (random-game initial-state)
+  (play-game policy-random initial-state))
 
-
-;-------------------------------
-; Write a random game to a text file
-; write-random-game :: String -> State -> State
-(define (write-random-game fname s0)
-  (define out
-    (open-output-file fname #:exists 'append))
-  (parameterize ([current-output-port out])
-    (random-game s0 #:print? #t))
-  (close-output-port out))
 
 ;-------------------------------
 ; Write the *game* list to a file
@@ -203,8 +185,9 @@
 
 ; Record the game
 (define *game* '())
+(define *print*? #f)
 (define (list-states g) (filter hash? g))
-(define (list-actions g) (filter (compose not hash?) g))
+(define (list-actions g) (filter list? g))
 
 
 ;===============================

@@ -126,13 +126,16 @@
 (define gamma 0.99) ; discounting factor
 (define alpha 0.5)  ; soft update parameter
 
-; Return the action with the most points for player A
-(define (argmax-points state)
+; Return the action with the most points for a given player
+; argmax-points :: Policy
+(define (argmax-points player state)
+  
   (define (action->points act st)
-    (view (>>> _points (_player 'A))
+    (view (>>> _points (_player player))
           (apply-action act state)))
+  
   (argmax (λ (act) (action->points act state))
-          (available-actions 'A state)))
+          (available-actions player state)))
 
 ; Run the Q-learning cycle
 (define (update-Q curr-state reward action next-state done?)
@@ -147,7 +150,12 @@
 ;-------------------------------
 ; Explore
 
-
+; Define a policy where player A always picks the most points, and player B picks randomly
+(define (policy-semi player state)
+  (cond [(eq? player 'A)
+         (argmax-points 'A state)]
+        [else
+         (policy-random 'B state)]))
 
 ;-------------------------------
 ; Run n games with a given policy and write them to game files
@@ -186,9 +194,7 @@
      (let ([x (Q-set! 1234 5678 1.0)]
            [y (Q-set! 1234 5679 2.0)])
        (check-equal? (Q-ref 1234 5678) 1.0)
-       (check-equal? (Q-ref 1234 5679) 2.0))
-     #;(check-equal? (argmax-points s0) '(sell-cards 'Spice 'A))
-     ))
+       (check-equal? (Q-ref 1234 5679) 2.0))))
 
   (run-tests learn-tests))
 
