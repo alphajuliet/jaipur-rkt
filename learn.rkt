@@ -26,15 +26,6 @@
 (define (action-player plyr)
   (λ (x) (eq? (eval (last x)) plyr)))
 
-; Return a sorted list of keys
-; Is this necessary?
-(define (sort-keys h)
-  (map string->symbol
-       (~>> h
-            (hash-keys)
-            (map symbol->string)
-            (sort _ string<=?))))
-
 ;-------------------------------
 ; Encodings
 
@@ -167,17 +158,6 @@
 
 (define (scoreA st)
   (view (>>> _points (_player 'A)) st))
-
-(define (show-actions)
-  (~>> *game*
-       (list-actions)
-       (filter (action-player 'A))
-       (map encode-action)))
-
-(define (show-states)
-  (~>> *game*
-       (list-states)
-       (map encode-state)))
 
 ;===============================
 ; Unit tests
