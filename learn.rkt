@@ -109,8 +109,8 @@
 ; Do a safe lookup
 ; Q-ref :: ∀ a b. a -> b -> Real 
 (define (Q-ref state action)
-  (~>> (>>= (λ (m) (hash-ref+ m action))
-            (hash-ref+ Q state))
+  (~>> (>>= (λ (m) (hash-ref-maybe m action))
+            (hash-ref-maybe Q state))
        (from-just '(0.))))
 
 

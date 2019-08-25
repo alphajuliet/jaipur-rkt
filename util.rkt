@@ -56,7 +56,7 @@
   (remove-duplicates (combinations (hash-enumerate h) n)))
 
 ; Safe hash-ref using Maybe functor
-(define (hash-ref+ hash ref)
+(define (hash-ref-maybe hash ref)
   (with-maybe-handler exn:fail:contract?
     (hash-ref hash ref)))
 
@@ -74,8 +74,8 @@
      (check-equal? (list->int '(1 2 3 4)) 1234)
      (check-equal? (drop-last '(1 2 3 4)) '(1 2 3))
 
-     (check-equal? (hash-ref+ (hash 'a 1) 'b) nothing)
-     (check-equal? (hash-ref+ (hash 'a 1) 'a) (just 1))))
+     (check-equal? (hash-ref-maybe (hash 'a 1) 'b) nothing)
+     (check-equal? (hash-ref-maybe (hash 'a 1) 'a) (just 1))))
 
   (run-tests util-tests))
 
