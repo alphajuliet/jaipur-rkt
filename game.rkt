@@ -125,7 +125,7 @@
 ; Apply a given policy function to generate the next state
 
 ; type Policy = Player -> State -> Action
-; apply-policy :: Policy -> State -> State
+; apply-policy :: Policy -> Player -> State -> State
 (define (apply-policy policy plyr st)  
   (~>> st
        (policy plyr) ; Action

@@ -15,6 +15,9 @@
 ; Exports
 (provide (all-defined-out))
 
+; See Racket v7.4 Guide section 15.1.2
+(define ns (make-base-namespace))
+
 ;-------------------------------
 ; Utilities
 
@@ -24,7 +27,7 @@
 ; Usage: (filter (action-player 'A) actions-list)
 ; action-player :: Player -> Action -> Boolean
 (define (action-player plyr)
-  (λ (x) (eq? (eval (last x)) plyr)))
+  (λ (x) (eq? (eval (last x) ns) plyr)))
 
 ;-------------------------------
 ; Encodings
@@ -71,13 +74,12 @@
          (map sgn)
          (flip list->int 2)))
 
-  (cond [ (eq? (car act) 'take-card)
-          (list 0 (1-hot (hash (eval (second act)) 1))) ]
-        [ (eq? (car act) 'sell-cards)
-          (list 1 (1-hot (hash (eval (second act)) 1))) ]
-        [ else
-          (list 2 (1-hot (second act)) (1-hot (third act))) ]))
-
+  (cond [(eq? (first act) 'take-card)
+         (list 0 (1-hot (hash (eval (second act) ns) 1)))]
+        [(eq? (first act) 'sell-cards)
+         (list 1 (1-hot (hash (eval (second act) ns) 1)))]
+        [else
+         (list 2 (1-hot (second act)) (1-hot (third act)))]))
 
 ;-------------------------------
 ; Q-learning algorithm
@@ -95,28 +97,30 @@
 ;	until S is terminal
 
 ; Define the mapping Q: State x Action -> Real
-; This is too large and sparse for an array, so we use a (mutable) hash of (mutable) hashes.
-(define Q (make-hash))
+; This is too large and sparse for an efficient array, so we use a (mutable) hash of (mutable) hashes.
+#;(define Q (make-hash))
+; type QTable = ∀ a b. Hash a (Hash b Real)
 
-; Q-set! :: ∀ a b. a -> b -> Real -> Real
-(define (Q-set! state action value)
-  (if (hash-has-key? Q state)
-      (hash-set! (hash-ref Q state) action value)
+; Q-set! :: ∀ a b. QTable -> a -> b -> Real -> Real
+(define (Q-set! q state action value)
+  (define s (encode-state state))
+  (define a (encode-action action))
+  (if (hash-has-key? q s)
+      (hash-set! (hash-ref q s) a value)
       ; else
-      (hash-set! Q state (make-hash `((,action . ,value)))))
+      (hash-set! q s (make-hash `((,a . ,value)))))
   value)
 
 ; Do a safe lookup
-; Q-ref :: ∀ a b. a -> b -> Real 
-(define (Q-ref state action)
-  (~>> (>>= (λ (m) (hash-ref-maybe m action))
-            (hash-ref-maybe Q state))
-       (from-just '(0.))))
+; Q-ref :: ∀ a b. QTable -> a -> b -> Real 
+(define (Q-ref q state action)
+  (define s (encode-state state))
+  (define a (encode-action action))
+  (~>> (>>= (λ (m) (hash-ref-maybe m a))
+            (hash-ref-maybe q s))
+       (from-just 0.)))
 
-
-(define gamma 0.99) ; discounting factor
-(define alpha 0.5)  ; soft update parameter
-
+;-------------------------------
 ; Return the action with the most points for a given player
 ; argmax-points :: Policy
 (define (argmax-points player state)
@@ -128,15 +132,40 @@
   (argmax (λ (act) (action->points act state))
           (available-actions player state)))
 
+
+;-------------------------------
 ; Run the Q-learning cycle
-(define (update-Q curr-state reward action next-state done?)
-  (define next-actions (available-actions next-state))
-  (define next-states (map (λ (a) (apply-action a curr-state))
-                           next-actions))
-  (define max-q-next
-    (apply max (Q-ref (encode-state next-states)
-                      (encode-action action))))
-  #f)
+
+; Helper function
+; Q-max :: QTable -> Player -> State -> Real
+(define (Q-max q player state)
+  (apply max (map (λ (act) (Q-ref q state act))
+                  (available-actions player state))))
+
+(define (q-learn initial-state
+                 #:max-iterations (max-iterations 50)
+                 #:alpha (alpha 0.5)   ; learning rate
+                 #:gamma (gamma 0.99)) ; discount factor
+
+  (define q (make-hash))
+  
+  (for/fold ([state initial-state]
+             #:result (values state q))
+            ([i (range max-iterations)]
+             #:break (> i max-iterations)
+             #:break (end-of-game? state))
+    
+    ; Player A uses Q-table
+    (define action (argmax-points 'A state))
+    (define next-state (apply-action action state))
+    (define reward (view (>>> _points (_player 'A)) next-state))
+    (Q-set! q state action (interp alpha
+                                   (Q-ref q state action)
+                                   (+ reward
+                                      (* gamma (Q-max q 'A next-state)))))
+    ; Player B is random
+    (apply-policy policy-random 'B next-state)))
+
 
 ;-------------------------------
 ; Explore
@@ -170,11 +199,17 @@
     (test-suite
      "Unit tests"
      (check-equal? (encode-state s0) 365435)
-     
-     (let ([x (Q-set! 1234 5678 1.0)]
-           [y (Q-set! 1234 5679 2.0)])
-       (check-equal? (Q-ref 1234 5678) 1.0)
-       (check-equal? (Q-ref 1234 5679) 2.0))))
+
+     (let* ([q (make-hash)]
+            [s (init-game #:seed 2)]
+            [a1 '(take-card 'Camel 'A)]
+            [a2 '(sell-cards 'Cloth 'A)]
+            [_ (Q-set! q s a1 1.0)]
+            [_ (Q-set! q s a2 2.0)])
+       (check-equal? (Q-ref q s a1) 1.0)
+       (check-equal? (Q-ref q s a2) 2.0)
+       
+       (check-equal? (Q-max q 'A s) 2.0))))
 
   (run-tests learn-tests))
 
