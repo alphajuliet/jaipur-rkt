@@ -10,6 +10,15 @@
 ; Exports
 (provide (all-defined-out))
 
+
+;-------------------------------
+; Math stuff
+
+; Interpolated value => (1-r)x + ry
+(define (interp r x y)
+  (+ (* (- 1 r) x)
+     (* r y)))
+
 ;-------------------------------
 ; Functional stuff
 
@@ -70,6 +79,7 @@
   (define util-tests
     (test-suite
      "Unit tests"
+     (check-equal? (interp 0.7 1.0 2.0) 1.7)
      (check-equal? (list-sum (range 5)) 10)
      (check-equal? (list->int '(1 2 3 4)) 1234)
      (check-equal? (drop-last '(1 2 3 4)) '(1 2 3))
