@@ -142,30 +142,55 @@
   (apply max (map (λ (act) (Q-ref q state act))
                   (available-actions player state))))
 
-(define (q-learn initial-state
+; Main function
+(define (q-learn q initial-state
                  #:max-iterations (max-iterations 50)
                  #:alpha (alpha 0.5)   ; learning rate
                  #:gamma (gamma 0.99)) ; discount factor
 
-  (define q (make-hash))
-  
-  (for/fold ([state initial-state]
-             #:result (values state q))
-            ([i (range max-iterations)]
-             #:break (> i max-iterations)
-             #:break (end-of-game? state))
+  (define-values (s q-final)
+    (for/fold ([state initial-state]
+               #:result (values state q))
+              ([i (range max-iterations)]
+               #:break (> i max-iterations)
+               #:break (end-of-game? state))
     
-    ; Player A uses Q-table
-    (define action (argmax-points 'A state))
-    (define next-state (apply-action action state))
-    (define reward (view (>>> _points (_player 'A)) next-state))
-    (Q-set! q state action (interp alpha
-                                   (Q-ref q state action)
-                                   (+ reward
-                                      (* gamma (Q-max q 'A next-state)))))
-    ; Player B is random
-    (apply-policy policy-random 'B next-state)))
+      ; Player A uses Q-table
+      (append! *game* (format "## Iteration: ~a" i))
+      (define action (argmax-points 'A state))
+      (define next-state (apply-action action state))
+      (define reward (view (>>> _points (_player 'A)) next-state))
+      (Q-set! q state action
+              (interp alpha
+                      (Q-ref q state action)
+                      (+ reward
+                         (* gamma (Q-max q 'A next-state)))))
+      (append! *game* next-state)
+      ; Player B is random
+      (apply-policy policy-random 'B next-state)))
+  
+  (define final-state (apply-end-bonus s))
+  (append! *game* final-state)
+  (values final-state q-final))
 
+;-------------------------------
+; Run Q-learning over a series of games
+(define (run-q-learn q start-seed end-seed)
+  (for ([seed (in-range start-seed end-seed)])
+    (define-values (s q1) (q-learn q (init-game #:seed seed)))
+    q1)
+  q)
+
+
+; Look at the Q-table stats
+(define (q-stats q)
+  (define v (map hash-count (hash-values q)))
+  (displayln (format "~a states recorded." (hash-count q)))
+  (displayln (format "Min length: ~a" (apply min v)))
+  (displayln (format "Max length: ~a" (apply max v)))
+  (displayln (format "Mean of ~a actions/state." (* 1.0
+                                                    (/ (list-sum v)
+                                                       (hash-count q))))))
 
 ;-------------------------------
 ; Explore
@@ -187,6 +212,10 @@
 
 (define (scoreA st)
   (view (>>> _points (_player 'A)) st))
+
+
+(define *game* '())
+(define q (make-hash))
 
 ;===============================
 ; Unit tests
