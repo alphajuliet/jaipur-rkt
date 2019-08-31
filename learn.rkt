@@ -55,16 +55,28 @@
        (map sgn)
        (flip list->int 2)))
 
+; Alternate simplistic state encoding just using h
 (define (encode-state-2 st)
   (~>> st
        (view (>>> _hand (_player 'A)))
        (hash-values)
        (map sgn)
        (flip list->int 2)))
-  
+
+(define (encode-state-3 st)
+  (define m (~>> st
+                 (view _market)
+                 (hash-values)))
+  (define h (~>> st
+                 (view (>>> _hand (_player 'A)))
+                 (hash-values)))
+  (~>> (list m h)
+       flatten
+       (map sgn)
+       (flip list->int 2)))
 
 ; Select the encoding
-(define encode-state encode-state-2)
+(define encode-state encode-state-3)
 
 ;-------------------------------
 ; Encode an action
@@ -100,7 +112,7 @@
         [else 2]))
 
 ; Select the encoding
-(define encode-action encode-action-2)
+(define encode-action encode-action-1)
 
 ;-------------------------------
 ; Q-learning algorithm

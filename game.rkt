@@ -17,6 +17,7 @@
          apply-action
          apply-policy
          play-game
+         play-game-result
          policy-random
          write-game
          
@@ -154,6 +155,12 @@
        ; Add the bonus points for the more camels
        (apply-end-bonus)))
 
+; Play a game and only return the final scores
+(define (play-game-result policy initial-state)
+  (~>> initial-state
+       (play-game policy)
+       (view _points)
+       (hash-values)))
 
 ;-------------------------------
 ; Play a completely random game
