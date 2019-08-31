@@ -15,6 +15,7 @@
 ; Exports
 (provide (all-defined-out))
 
+; Ensure eval works in a program
 ; See Racket v7.4 Guide section 15.1.2
 (define ns (make-base-namespace))
 
@@ -30,15 +31,13 @@
   (λ (x) (eq? (eval (last x) ns) plyr)))
 
 ;-------------------------------
-; Encodings
-
 ; Encode a state
 ; This is from the point of view of player A. All they can see is the
 ; market (m), their own hand (h), and the token stacks (t).
 ; Return the current score for player A too.
 
 ; encode-state :: State -> Integer
-(define (encode-state st)
+(define (encode-state-1 st)
   (define m (~>> st
                  (view _market)
                  (hash-values)))
@@ -56,6 +55,18 @@
        (map sgn)
        (flip list->int 2)))
 
+(define (encode-state-2 st)
+  (~>> st
+       (view (>>> _hand (_player 'A)))
+       (hash-values)
+       (map sgn)
+       (flip list->int 2)))
+  
+
+; Select the encoding
+(define encode-state encode-state-2)
+
+;-------------------------------
 ; Encode an action
 ; We encode an action (without state).
 ; Currently encoded as a list. The first element is a code 0-2 for the action
@@ -63,7 +74,7 @@
 ; e.g. (encode-action '(take-card 'Camel 'A)) => '(0 64)
 
 ; encode-action :: Action -> [Integer]
-(define (encode-action act)
+(define (encode-action-1 act)
 
   ; Convert a hash to a boolean 1-hot encoded decimal number
   ; (1-hot '#hash('Camel 1 'Silver 5)) => 36
@@ -78,8 +89,18 @@
          (list 0 (1-hot (hash (eval (second act) ns) 1)))]
         [(eq? (first act) 'sell-cards)
          (list 1 (1-hot (hash (eval (second act) ns) 1)))]
-        [else
+        [else ;'exchanges-cards
          (list 2 (1-hot (second act)) (1-hot (third act)))]))
+
+; Alternative very simple encoding of action to number, ignoring the arguments
+(define (encode-action-2 act)
+  (define a (first act))
+  (cond [(eq? a 'take-card) 0]
+        [(eq? a 'sell-cards) 1]
+        [else 2]))
+
+; Select the encoding
+(define encode-action encode-action-2)
 
 ;-------------------------------
 ; Q-learning algorithm
@@ -98,7 +119,6 @@
 
 ; Define the mapping Q: State x Action -> Real
 ; This is too large and sparse for an efficient array, so we use a (mutable) hash of (mutable) hashes.
-#;(define Q (make-hash))
 ; type QTable = ∀ a b. Hash a (Hash b Real)
 
 ; Q-set! :: ∀ a b. QTable -> a -> b -> Real -> Real
@@ -124,7 +144,8 @@
 ; Return the action with the most points for a given player
 ; argmax-points :: Policy
 (define (argmax-points player state)
-  
+
+  ; action->points :: Action -> State -> Integer
   (define (action->points act st)
     (view (>>> _points (_player player))
           (apply-action act state)))
@@ -132,17 +153,26 @@
   (argmax (λ (act) (action->points act state))
           (available-actions player state)))
 
-
-;-------------------------------
+;===============================
 ; Run the Q-learning cycle
 
-; Helper function
+;-------------------------------
+; Helper functions
+
 ; Q-max :: QTable -> Player -> State -> Real
 (define (Q-max q player state)
   (apply max (map (λ (act) (Q-ref q state act))
                   (available-actions player state))))
 
+; Q-argmax :: QTable -> Player -> State -> Action
+(define (Q-argmax q player state)
+  (argmax (λ (act) (+ (Q-ref q state act)
+                      (random 4)))
+          (available-actions player state)))
+
+;-------------------------------
 ; Main function
+; q-learn :: QTable -> State -> (State, QTable)
 (define (q-learn q initial-state
                  #:max-iterations (max-iterations 50)
                  #:alpha (alpha 0.5)   ; learning rate
@@ -155,9 +185,10 @@
                #:break (> i max-iterations)
                #:break (end-of-game? state))
     
-      ; Player A uses Q-table
       (append! *game* (format "## Iteration: ~a" i))
-      (define action (argmax-points 'A state))
+
+      ; Player A uses Q-table
+      (define action (Q-argmax q 'A state))
       (define next-state (apply-action action state))
       (define reward (view (>>> _points (_player 'A)) next-state))
       (Q-set! q state action
@@ -166,6 +197,7 @@
                       (+ reward
                          (* gamma (Q-max q 'A next-state)))))
       (append! *game* next-state)
+      
       ; Player B is random
       (apply-policy policy-random 'B next-state)))
   
@@ -175,6 +207,7 @@
 
 ;-------------------------------
 ; Run Q-learning over a series of games
+; run-q-learn :: QTable -> Integer -> Integer -> QTable
 (define (run-q-learn q start-seed end-seed)
   (for ([seed (in-range start-seed end-seed)])
     (define-values (s q1) (q-learn q (init-game #:seed seed)))
@@ -188,14 +221,14 @@
   (displayln (format "~a states recorded." (hash-count q)))
   (displayln (format "Min length: ~a" (apply min v)))
   (displayln (format "Max length: ~a" (apply max v)))
-  (displayln (format "Mean of ~a actions/state." (* 1.0
-                                                    (/ (list-sum v)
-                                                       (hash-count q))))))
+  (displayln (format "Mean of ~a actions/state." (* 1.0 (/ (list-sum v)
+                                                           (length v))))))
 
 ;-------------------------------
 ; Explore
 
 ; Define a policy where player A always picks the most points, and player B picks randomly
+; policy-semi :: Policy 
 (define (policy-semi player state)
   (cond [(eq? player 'A)
          (argmax-points 'A state)]
@@ -227,7 +260,8 @@
   (define learn-tests
     (test-suite
      "Unit tests"
-     (check-equal? (encode-state s0) 365435)
+     (check-equal? (encode-state-1 s0) 365435)
+     (check-equal? (encode-state-2 s0) 38)
 
      (let* ([q (make-hash)]
             [s (init-game #:seed 2)]
@@ -241,7 +275,5 @@
        (check-equal? (Q-max q 'A s) 2.0))))
 
   (run-tests learn-tests))
-
-
 
 ; The End
